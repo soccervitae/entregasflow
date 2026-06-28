@@ -65,6 +65,14 @@ export default function Sidebar({ nomeEstabelecimento = 'EntregasFlow', nomeUsua
           <span className="material-symbols-outlined text-[22px]">add_circle</span>
           <span className="text-sm font-semibold">Novo Pedido</span>
         </Link>
+
+        <Link
+          href="/onboarding"
+          className="flex items-center gap-3 px-4 py-2 mt-1 rounded-lg text-on-primary-container/60 hover:text-surface-container-lowest hover:bg-primary-container/20 transition-all"
+        >
+          <span className="material-symbols-outlined text-[20px]">add_business</span>
+          <span className="text-sm font-medium">Novo Estabelecimento</span>
+        </Link>
       </nav>
 
       <div className="mt-auto p-3 bg-primary-container/10 rounded-xl">

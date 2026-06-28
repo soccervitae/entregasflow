@@ -24,11 +24,6 @@ export default function OnboardingPage() {
     const load = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/cadastro'); return }
-
-      // Verifica se já tem estabelecimento cadastrado
-      const { data: est } = await supabase.from('estabelecimentos').select('id').eq('owner_id', user.id).single()
-      if (est) { router.push('/pdv'); return }
-
       setUserId(user.id)
       const { data: profile } = await supabase.from('profiles').select('nome').eq('id', user.id).single()
       if (profile) setNomeUsuario(profile.nome)
@@ -63,7 +58,7 @@ export default function OnboardingPage() {
       return
     }
 
-    // Linka estabelecimento ao profile
+    // Define o novo estabelecimento como ativo no profile
     await supabase.from('profiles').update({ estabelecimento_id: est.id }).eq('id', userId)
 
     setLoading(false)
@@ -87,10 +82,10 @@ export default function OnboardingPage() {
             <span className="material-symbols-outlined text-white text-3xl">store</span>
           </div>
           <h1 className="text-2xl font-bold text-on-background">
-            {nomeUsuario ? `Olá, ${nomeUsuario}! 👋` : 'Bem-vindo!'}
+            {nomeUsuario ? `Olá, ${nomeUsuario}! 👋` : 'Novo estabelecimento'}
           </h1>
           <p className="text-on-surface-variant text-sm mt-1">
-            Configure seu estabelecimento para começar a usar o EntregasFlow.
+            Cadastre um estabelecimento para começar a gerenciar pedidos.
           </p>
         </div>
 
@@ -115,8 +110,8 @@ export default function OnboardingPage() {
 
           {step === 1 && (
             <div>
-              <h2 className="font-bold text-on-background text-lg mb-1">Que tipo de estabelecimento é o seu?</h2>
-              <p className="text-on-surface-variant text-sm mb-6">Isso nos ajuda a personalizar sua experiência.</p>
+              <h2 className="font-bold text-on-background text-lg mb-1">Que tipo de estabelecimento é esse?</h2>
+              <p className="text-on-surface-variant text-sm mb-6">Isso nos ajuda a personalizar a experiência.</p>
               <div className="grid grid-cols-2 gap-3">
                 {tiposEstabelecimento.map((t) => (
                   <button
