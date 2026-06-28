@@ -59,7 +59,7 @@ export default function CadastroPage() {
       return
     }
 
-    router.push('/onboarding')
+    router.push('/pdv')
   }
 
   return (
