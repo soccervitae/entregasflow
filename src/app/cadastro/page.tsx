@@ -33,41 +33,30 @@ export default function CadastroPage() {
 
     setLoading(true)
 
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password: senha,
-      options: {
-        data: { nome, sobrenome },
-      },
+    // Cria o usuário via API route (usa service role para confirmar e-mail automaticamente)
+    const res = await fetch('/api/auth/cadastro', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nome, sobrenome, email, senha }),
     })
 
-    if (error) {
+    if (!res.ok) {
+      const { error } = await res.json()
       setLoading(false)
-      if (error.message.includes('already registered')) {
-        setErro('Este e-mail já está cadastrado.')
-      } else {
-        setErro('Erro ao criar conta. Tente novamente.')
-      }
+      setErro(error || 'Erro ao criar conta. Tente novamente.')
       return
     }
 
-    if (data.user) {
-      const { error: profileError } = await supabase.from('profiles').insert({
-        id: data.user.id,
-        nome,
-        sobrenome,
-        email,
-        role: 'useradmin',
-      })
+    // Faz login automático com as credenciais recém-criadas
+    const { error: loginError } = await supabase.auth.signInWithPassword({ email, password: senha })
+    setLoading(false)
 
-      if (profileError) {
-        setLoading(false)
-        setErro('Erro ao salvar perfil. Tente novamente.')
-        return
-      }
+    if (loginError) {
+      setErro('Conta criada! Faça login para continuar.')
+      router.push('/login')
+      return
     }
 
-    setLoading(false)
     router.push('/onboarding')
   }
 
