@@ -1,0 +1,22 @@
+{
+  "name": "EntregasFlow — App do Entregador",
+  "short_name": "EntregasFlow",
+  "description": "Receba e confirme suas corridas de entrega",
+  "start_url": "/entregador/corridas",
+  "display": "standalone",
+  "background_color": "#0b1c30",
+  "theme_color": "#0b1c30",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
