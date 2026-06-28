@@ -2,9 +2,10 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Toast from '@/components/ui/Toast'
+import Image from 'next/image'
 
 export default function ConfiguracoesPage() {
   const [nome, setNome] = useState('')
@@ -12,10 +13,14 @@ export default function ConfiguracoesPage() {
   const [endereco, setEndereco] = useState('')
   const [cidade, setCidade] = useState('')
   const [status, setStatus] = useState<'aberto' | 'fechado'>('aberto')
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
+  const [logoPreview, setLogoPreview] = useState<string | null>(null)
+  const [uploadingLogo, setUploadingLogo] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [estId, setEstId] = useState<string | null>(null)
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -31,10 +36,49 @@ export default function ConfiguracoesPage() {
         setEndereco(data.endereco || '')
         setCidade(data.cidade || '')
         setStatus(data.status || 'aberto')
+        setLogoUrl(data.logo_url || null)
       }
     }
     load()
   }, [])
+
+  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !estId) return
+
+    setLogoPreview(URL.createObjectURL(file))
+    setUploadingLogo(true)
+
+    const ext = file.name.split('.').pop()
+    const path = `${estId}/logo.${ext}`
+
+    const { error: uploadError } = await supabase.storage
+      .from('logos')
+      .upload(path, file, { upsert: true })
+
+    if (uploadError) {
+      setToast({ msg: 'Erro ao enviar imagem', type: 'error' })
+      setUploadingLogo(false)
+      return
+    }
+
+    const { data: { publicUrl } } = supabase.storage.from('logos').getPublicUrl(path)
+
+    const { error: updateError } = await supabase
+      .from('estabelecimentos')
+      .update({ logo_url: publicUrl })
+      .eq('id', estId)
+
+    setUploadingLogo(false)
+
+    if (updateError) {
+      setToast({ msg: 'Erro ao salvar logo', type: 'error' })
+      return
+    }
+
+    setLogoUrl(publicUrl)
+    setToast({ msg: 'Logo atualizada!', type: 'success' })
+  }
 
   const salvar = async () => {
     if (!estId) return
@@ -47,6 +91,8 @@ export default function ConfiguracoesPage() {
     if (error) { setToast({ msg: 'Erro ao salvar', type: 'error' }); return }
     setToast({ msg: 'Configurações salvas!', type: 'success' })
   }
+
+  const logoSrc = logoPreview || logoUrl
 
   return (
     <div className="flex flex-col h-screen">
@@ -72,6 +118,44 @@ export default function ConfiguracoesPage() {
           </div>
         ) : (
           <div className="space-y-6">
+
+            {/* Logo */}
+            <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/20 shadow-sm p-6">
+              <h3 className="font-semibold text-on-background mb-4">Logo do Estabelecimento</h3>
+              <div className="flex items-center gap-5">
+                <div className="w-24 h-24 rounded-2xl bg-surface-container flex items-center justify-center overflow-hidden flex-shrink-0 border border-outline-variant">
+                  {logoSrc ? (
+                    <img src={logoSrc} alt="Logo" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="material-symbols-outlined text-on-surface-variant text-4xl">store</span>
+                  )}
+                </div>
+                <div>
+                  <p className="text-sm text-on-surface-variant mb-3">PNG, JPG ou WebP. Máximo 2MB.</p>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={handleLogoChange}
+                    className="hidden"
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingLogo}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-outline-variant text-sm font-semibold text-on-background hover:border-secondary-container hover:text-secondary-container transition-all disabled:opacity-50"
+                  >
+                    {uploadingLogo ? (
+                      <div className="w-4 h-4 border-2 border-outline-variant border-t-secondary-container rounded-full animate-spin" />
+                    ) : (
+                      <span className="material-symbols-outlined text-[18px]">upload</span>
+                    )}
+                    {uploadingLogo ? 'Enviando...' : logoSrc ? 'Trocar logo' : 'Enviar logo'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Informações Básicas */}
             <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/20 shadow-sm p-6">
               <h3 className="font-semibold text-on-background mb-4">Informações Básicas</h3>
               <div className="space-y-4">
@@ -102,6 +186,7 @@ export default function ConfiguracoesPage() {
               </div>
             </div>
 
+            {/* Status */}
             <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/20 shadow-sm p-6">
               <h3 className="font-semibold text-on-background mb-4">Status do Estabelecimento</h3>
               <div className="flex gap-3">
