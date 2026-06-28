@@ -15,6 +15,8 @@ export default function CadastroPage() {
   const [confirmar, setConfirmar] = useState('')
   const [loading, setLoading] = useState(false)
   const [erro, setErro] = useState('')
+  const [mostrarSenha, setMostrarSenha] = useState(false)
+  const [mostrarConfirmar, setMostrarConfirmar] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -161,26 +163,44 @@ export default function CadastroPage() {
 
             <div>
               <label className="block text-xs font-bold text-on-surface-variant uppercase mb-1.5">Senha</label>
-              <input
-                type="password"
-                value={senha}
-                onChange={(e) => setSenha(e.target.value)}
-                required
-                className="w-full px-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl text-sm outline-none focus:ring-2 focus:ring-secondary-container"
-                placeholder="Mínimo 6 caracteres"
-              />
+              <div className="relative">
+                <input
+                  type={mostrarSenha ? 'text' : 'password'}
+                  value={senha}
+                  onChange={(e) => setSenha(e.target.value)}
+                  required
+                  className="w-full px-4 py-3 pr-11 bg-surface-container-low border border-outline-variant rounded-xl text-sm outline-none focus:ring-2 focus:ring-secondary-container"
+                  placeholder="Mínimo 6 caracteres"
+                />
+                <button
+                  type="button"
+                  onClick={() => setMostrarSenha(!mostrarSenha)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-background transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[20px]">{mostrarSenha ? 'visibility_off' : 'visibility'}</span>
+                </button>
+              </div>
             </div>
 
             <div>
               <label className="block text-xs font-bold text-on-surface-variant uppercase mb-1.5">Confirmar senha</label>
-              <input
-                type="password"
-                value={confirmar}
-                onChange={(e) => setConfirmar(e.target.value)}
-                required
-                className="w-full px-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl text-sm outline-none focus:ring-2 focus:ring-secondary-container"
-                placeholder="Repita a senha"
-              />
+              <div className="relative">
+                <input
+                  type={mostrarConfirmar ? 'text' : 'password'}
+                  value={confirmar}
+                  onChange={(e) => setConfirmar(e.target.value)}
+                  required
+                  className="w-full px-4 py-3 pr-11 bg-surface-container-low border border-outline-variant rounded-xl text-sm outline-none focus:ring-2 focus:ring-secondary-container"
+                  placeholder="Repita a senha"
+                />
+                <button
+                  type="button"
+                  onClick={() => setMostrarConfirmar(!mostrarConfirmar)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-background transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[20px]">{mostrarConfirmar ? 'visibility_off' : 'visibility'}</span>
+                </button>
+              </div>
             </div>
 
             <button
