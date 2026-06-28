@@ -20,12 +20,21 @@ export default function LoginPage() {
     setLoading(true)
     setErro('')
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password: senha })
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password: senha })
     setLoading(false)
 
     if (error) {
       setErro('E-mail ou senha inválidos')
       return
+    }
+
+    const userId = data.user?.id
+    if (userId) {
+      const { data: ests } = await supabase.from('estabelecimentos').select('id').eq('owner_id', userId).limit(1)
+      if (!ests || ests.length === 0) {
+        router.push('/onboarding')
+        return
+      }
     }
     router.push('/pdv')
   }

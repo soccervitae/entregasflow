@@ -23,9 +23,10 @@ export default function PdvPage() {
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return
-      supabase.from('estabelecimentos').select('id').eq('owner_id', user.id).single().then(({ data }) => {
-        if (data) setEstabelecimentoId(data.id)
+      if (!user) { window.location.href = '/login'; return }
+      supabase.from('estabelecimentos').select('id').eq('owner_id', user.id).limit(1).then(({ data }) => {
+        if (!data || data.length === 0) { window.location.href = '/onboarding'; return }
+        setEstabelecimentoId(data[0].id)
       })
     })
   }, [])
