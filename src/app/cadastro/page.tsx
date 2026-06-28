@@ -17,6 +17,17 @@ export default function CadastroPage() {
   const [erro, setErro] = useState('')
   const [mostrarSenha, setMostrarSenha] = useState(false)
   const [mostrarConfirmar, setMostrarConfirmar] = useState(false)
+
+  const validarSenha = (s: string) => {
+    const regras = [
+      { ok: s.length >= 8, msg: 'Mínimo 8 caracteres' },
+      { ok: /[A-Z]/.test(s), msg: 'Uma letra maiúscula' },
+      { ok: /[a-z]/.test(s), msg: 'Uma letra minúscula' },
+      { ok: /[0-9]/.test(s), msg: 'Um número' },
+      { ok: /[^A-Za-z0-9]/.test(s), msg: 'Um caractere especial (!@#$...)' },
+    ]
+    return regras
+  }
   const router = useRouter()
   const supabase = createClient()
 
@@ -28,8 +39,10 @@ export default function CadastroPage() {
       setErro('As senhas não coincidem.')
       return
     }
-    if (senha.length < 6) {
-      setErro('A senha deve ter pelo menos 6 caracteres.')
+    const regras = validarSenha(senha)
+    const invalida = regras.find(r => !r.ok)
+    if (invalida) {
+      setErro(`Senha fraca: ${invalida.msg}.`)
       return
     }
 
@@ -180,6 +193,18 @@ export default function CadastroPage() {
                   <span className="material-symbols-outlined text-[20px]">{mostrarSenha ? 'visibility_off' : 'visibility'}</span>
                 </button>
               </div>
+
+              {/* Indicador de regras */}
+              {senha.length > 0 && (
+                <div className="mt-2 grid grid-cols-2 gap-1">
+                  {validarSenha(senha).map((r) => (
+                    <div key={r.msg} className={`flex items-center gap-1.5 text-xs ${r.ok ? 'text-green-600' : 'text-on-surface-variant'}`}>
+                      <span className="material-symbols-outlined text-[14px]">{r.ok ? 'check_circle' : 'radio_button_unchecked'}</span>
+                      {r.msg}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div>
