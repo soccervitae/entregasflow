@@ -295,6 +295,88 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* CHEGA DE NOTA SECTION */}
+      <section className="py-24 px-6 max-w-7xl mx-auto">
+        <div className="text-center mb-14">
+          <span className="text-xs font-bold text-secondary-container uppercase tracking-wider">Uma virada de jogo</span>
+          <h2 className="text-4xl font-bold text-on-background mt-2 mb-4">
+            Chega de usar nota de pedido<br className="hidden md:block" /> para pagar seus entregadores
+          </h2>
+          <p className="text-on-surface-variant text-lg max-w-2xl mx-auto">
+            Muitos deliveries ainda entregam a nota fiscal do pedido ao entregador para que ele saiba quantas corridas fez no dia.
+            Com o EntregasFlow, esse processo é 100% digital e automático.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+          {/* Antes */}
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-8">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center">
+                <span className="material-symbols-outlined text-red-500 text-[22px]">receipt_long</span>
+              </div>
+              <div>
+                <p className="text-xs font-bold text-red-400 uppercase tracking-wider">Antes</p>
+                <p className="font-bold text-red-700">O jeito antigo e manual</p>
+              </div>
+            </div>
+            <ul className="space-y-4">
+              {[
+                { icon: 'description', text: 'Entregador guarda as notas dos pedidos para provar quantas corridas fez' },
+                { icon: 'calculate', text: 'Dono soma as notas manualmente no fim do dia para calcular o pagamento' },
+                { icon: 'warning', text: 'Risco de perda, fraude ou divergência nas notas acumuladas' },
+                { icon: 'schedule', text: 'Processo lento e sujeito a erros humanos no acerto de contas' },
+                { icon: 'visibility_off', text: 'Sem visibilidade em tempo real de quantas entregas cada um fez' },
+              ].map((item) => (
+                <li key={item.text} className="flex items-start gap-3">
+                  <span className="material-symbols-outlined text-red-400 text-[18px] mt-0.5 flex-shrink-0">{item.icon}</span>
+                  <p className="text-sm text-red-700">{item.text}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Depois */}
+          <div className="bg-green-50 border border-green-200 rounded-2xl p-8">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
+                <span className="material-symbols-outlined text-green-600 text-[22px]">smartphone</span>
+              </div>
+              <div>
+                <p className="text-xs font-bold text-green-500 uppercase tracking-wider">Com EntregasFlow</p>
+                <p className="font-bold text-green-800">Tudo digital e automático</p>
+              </div>
+            </div>
+            <ul className="space-y-4">
+              {[
+                { icon: 'check_circle', text: 'Cada entrega confirmada é registrada automaticamente no histórico do entregador' },
+                { icon: 'attach_money', text: 'Ganhos calculados em tempo real: o entregador vê o total do dia no próprio app' },
+                { icon: 'history', text: 'Histórico agrupado por data: quantas corridas fez e quanto ganhou em cada dia' },
+                { icon: 'leaderboard', text: 'Estabelecimento vê o ranking e os ganhos de cada entregador no painel de relatórios' },
+                { icon: 'verified', text: 'Zero divergência: os dados são os mesmos para o entregador e para o estabelecimento' },
+              ].map((item) => (
+                <li key={item.text} className="flex items-start gap-3">
+                  <span className="material-symbols-outlined text-green-500 text-[18px] mt-0.5 flex-shrink-0">{item.icon}</span>
+                  <p className="text-sm text-green-800">{item.text}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        {/* Call out central */}
+        <div className="mt-10 bg-on-background rounded-2xl p-8 text-center">
+          <span className="material-symbols-outlined text-secondary-container text-5xl mb-4 block">auto_awesome</span>
+          <p className="text-surface-container-lowest text-xl font-bold mb-2">
+            O entregador tem controle total das suas corridas. O estabelecimento também.
+          </p>
+          <p className="text-on-primary-container max-w-xl mx-auto text-sm">
+            Quando o entregador confirma uma entrega, o sistema registra automaticamente o valor da taxa,
+            atualiza o histórico e soma nos ganhos do dia — sem papelada, sem anotação, sem erro.
+          </p>
+        </div>
+      </section>
+
       {/* PDV SECTION */}
       <section id="pdv" className="py-24 px-6 max-w-7xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
