@@ -118,7 +118,14 @@ export default function LoginPage() {
               </button>
             </form>
 
-            <p className="mt-6 text-center text-sm text-on-surface-variant">
+            <p className="mt-4 text-center text-sm text-on-surface-variant">
+              Não tem conta?{' '}
+              <a href="/cadastro" className="text-secondary-container font-semibold hover:underline">
+                Criar conta grátis
+              </a>
+            </p>
+
+            <p className="mt-3 text-center text-sm text-on-surface-variant">
               É entregador?{' '}
               <a href="/entregador" className="text-on-tertiary-container font-semibold hover:underline">
                 Acesse o app de corridas

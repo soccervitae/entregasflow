@@ -106,7 +106,7 @@ export default function HomePage() {
               Entrar
             </Link>
             <Link
-              href="/login"
+              href="/cadastro"
               className="bg-secondary-container text-white px-4 py-2 rounded-xl text-sm font-semibold hover:opacity-90 active:scale-95 transition-all"
             >
               Começar grátis
@@ -139,11 +139,11 @@ export default function HomePage() {
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
             <Link
-              href="/login"
+              href="/cadastro"
               className="flex items-center gap-2 bg-secondary-container text-white px-8 py-4 rounded-2xl text-base font-bold hover:opacity-90 active:scale-95 transition-all shadow-2xl shadow-secondary-container/30 min-w-[200px] justify-center"
             >
               <span className="material-symbols-outlined text-[20px]">rocket_launch</span>
-              Acessar o PDV
+              Começar grátis
             </Link>
             <Link
               href="/entregador"
