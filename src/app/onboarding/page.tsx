@@ -226,12 +226,6 @@ export default function OnboardingPage() {
           )}
         </div>
 
-        <p className="text-center text-xs text-on-surface-variant mt-6">
-          Vai configurar depois?{' '}
-          <button onClick={() => router.push('/pdv')} className="text-secondary-container font-semibold hover:underline">
-            Pular por agora
-          </button>
-        </p>
       </div>
     </div>
   )
