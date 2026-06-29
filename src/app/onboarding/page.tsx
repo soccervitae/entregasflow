@@ -15,7 +15,7 @@ export default function OnboardingPage() {
   const [telefone, setTelefone] = useState('')
   const [endereco, setEndereco] = useState('')
   const [estado, setEstado] = useState('')
-  const [cidade, setCidade] = useState('')
+  const [cidades, setCidades] = useState<string[]>([])
   const [tipo, setTipo] = useState<'pizzaria' | 'restaurante' | 'lanchonete' | 'outro'>('restaurante')
   const [loading, setLoading] = useState(false)
   const [erro, setErro] = useState('')
@@ -23,8 +23,9 @@ export default function OnboardingPage() {
   const [nomeUsuario, setNomeUsuario] = useState('')
 
   const [estados, setEstados] = useState<Estado[]>([])
-  const [cidades, setCidades] = useState<Cidade[]>([])
+  const [listaCidades, setListaCidades] = useState<Cidade[]>([])
   const [loadingCidades, setLoadingCidades] = useState(false)
+  const [buscaCidade, setBuscaCidade] = useState('')
 
   const router = useRouter()
   const supabase = createClient()
@@ -45,18 +46,23 @@ export default function OnboardingPage() {
   }, [])
 
   useEffect(() => {
-    if (!estado) { setCidades([]); setCidade(''); return }
+    if (!estado) { setListaCidades([]); setCidades([]); return }
     setLoadingCidades(true)
-    setCidade('')
+    setCidades([])
+    setBuscaCidade('')
     fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${estado}/municipios?orderBy=nome`)
       .then(r => r.json())
-      .then(data => { setCidades(data); setLoadingCidades(false) })
+      .then(data => { setListaCidades(data); setLoadingCidades(false) })
   }, [estado])
+
+  const toggleCidade = (nome: string) => {
+    setCidades(prev => prev.includes(nome) ? prev.filter(c => c !== nome) : [...prev, nome])
+  }
 
   const handleSalvar = async () => {
     if (!nomeEst.trim()) { setErro('Informe o nome do estabelecimento.'); return }
     if (!estado) { setErro('Selecione o estado.'); return }
-    if (!cidade) { setErro('Selecione a cidade.'); return }
+    if (cidades.length === 0) { setErro('Selecione ao menos uma cidade.'); return }
     if (!userId) return
 
     setLoading(true)
@@ -64,7 +70,7 @@ export default function OnboardingPage() {
 
     const { data: est, error } = await supabase
       .from('estabelecimentos')
-      .insert({ nome: nomeEst, telefone, endereco, estado, cidade, owner_id: userId, status: 'aberto' })
+      .insert({ nome: nomeEst, telefone, endereco, estado, cidade: cidades[0], cidades, owner_id: userId, status: 'aberto' })
       .select('id')
       .single()
 
@@ -201,21 +207,58 @@ export default function OnboardingPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-on-surface-variant uppercase mb-1.5">Cidade *</label>
-                  <div className="relative">
-                    <select value={cidade} onChange={(e) => setCidade(e.target.value)} disabled={!estado || loadingCidades} className={selectClass + (!estado ? ' opacity-50 cursor-not-allowed' : '')}>
-                      <option value="">
-                        {!estado ? 'Selecione o estado primeiro' : loadingCidades ? 'Carregando cidades...' : 'Selecione a cidade'}
-                      </option>
-                      {cidades.map((c) => (
-                        <option key={c.id} value={c.nome}>{c.nome}</option>
+                  <label className="block text-xs font-bold text-on-surface-variant uppercase mb-1.5">
+                    Cidades de atuação * {cidades.length > 0 && <span className="text-secondary-container normal-case font-normal">({cidades.length} selecionada{cidades.length > 1 ? 's' : ''})</span>}
+                  </label>
+
+                  {/* Tags das cidades selecionadas */}
+                  {cidades.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                      {cidades.map(c => (
+                        <span key={c} className="flex items-center gap-1 px-2.5 py-1 bg-secondary-container/15 text-secondary-container text-xs font-semibold rounded-lg">
+                          {c}
+                          <button onClick={() => toggleCidade(c)} className="hover:text-error transition-colors">
+                            <span className="material-symbols-outlined text-[14px]">close</span>
+                          </button>
+                        </span>
                       ))}
-                    </select>
-                    {loadingCidades
-                      ? <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-outline-variant border-t-secondary-container rounded-full animate-spin" />
-                      : <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px] pointer-events-none">expand_more</span>
-                    }
-                  </div>
+                    </div>
+                  )}
+
+                  {!estado ? (
+                    <p className="text-xs text-on-surface-variant py-2">Selecione o estado primeiro.</p>
+                  ) : loadingCidades ? (
+                    <div className="flex items-center gap-2 py-2">
+                      <div className="w-4 h-4 border-2 border-outline-variant border-t-secondary-container rounded-full animate-spin" />
+                      <span className="text-xs text-on-surface-variant">Carregando cidades...</span>
+                    </div>
+                  ) : (
+                    <>
+                      <input
+                        value={buscaCidade}
+                        onChange={(e) => setBuscaCidade(e.target.value)}
+                        className="w-full px-4 py-2.5 bg-surface-container-low border border-outline-variant rounded-xl text-sm outline-none focus:ring-2 focus:ring-secondary-container mb-2"
+                        placeholder="Buscar cidade..."
+                      />
+                      <div className="max-h-44 overflow-y-auto rounded-xl border border-outline-variant divide-y divide-outline-variant/50">
+                        {listaCidades
+                          .filter(c => c.nome.toLowerCase().includes(buscaCidade.toLowerCase()))
+                          .map(c => (
+                            <button key={c.id} onClick={() => toggleCidade(c.nome)}
+                              className={`w-full flex items-center justify-between px-4 py-2.5 text-sm text-left transition-colors ${
+                                cidades.includes(c.nome)
+                                  ? 'bg-secondary-container/10 text-secondary-container font-semibold'
+                                  : 'text-on-background hover:bg-surface-container'
+                              }`}
+                            >
+                              {c.nome}
+                              {cidades.includes(c.nome) && <span className="material-symbols-outlined text-[18px]">check</span>}
+                            </button>
+                          ))
+                        }
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
 

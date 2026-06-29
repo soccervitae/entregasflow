@@ -13,12 +13,13 @@ export default function ConfiguracoesPage() {
   const [nome, setNome] = useState('')
   const [telefone, setTelefone] = useState('')
   const [endereco, setEndereco] = useState('')
-  const [cidade, setCidade] = useState('')
+  const [cidadesSelecionadas, setCidadesSelecionadas] = useState<string[]>([])
   const [status, setStatus] = useState<'aberto' | 'fechado'>('aberto')
   const [estado, setEstado] = useState('')
   const [estados, setEstados] = useState<Estado[]>([])
-  const [cidades, setCidades] = useState<Cidade[]>([])
+  const [listaCidades, setListaCidades] = useState<Cidade[]>([])
   const [loadingCidades, setLoadingCidades] = useState(false)
+  const [buscaCidade, setBuscaCidade] = useState('')
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const [uploadingLogo, setUploadingLogo] = useState(false)
@@ -40,7 +41,7 @@ export default function ConfiguracoesPage() {
         setNome(data.nome || '')
         setTelefone(data.telefone || '')
         setEndereco(data.endereco || '')
-        setCidade(data.cidade || '')
+        setCidadesSelecionadas(data.cidades || (data.cidade ? [data.cidade] : []))
         setStatus(data.status || 'aberto')
         setLogoUrl(data.logo_url || null)
         setEstado(data.estado || '')
@@ -54,12 +55,16 @@ export default function ConfiguracoesPage() {
   }, [])
 
   useEffect(() => {
-    if (!estado) { setCidades([]); return }
+    if (!estado) { setListaCidades([]); return }
     setLoadingCidades(true)
     fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${estado}/municipios?orderBy=nome`)
       .then(r => r.json())
-      .then(data => { setCidades(data); setLoadingCidades(false) })
+      .then(data => { setListaCidades(data); setLoadingCidades(false) })
   }, [estado])
+
+  const toggleCidade = (nome: string) => {
+    setCidadesSelecionadas(prev => prev.includes(nome) ? prev.filter(c => c !== nome) : [...prev, nome])
+  }
 
   const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -104,7 +109,7 @@ export default function ConfiguracoesPage() {
     setSaving(true)
     const { error } = await supabase
       .from('estabelecimentos')
-      .update({ nome, telefone, endereco, estado, cidade, status })
+      .update({ nome, telefone, endereco, estado, cidade: cidadesSelecionadas[0] || null, cidades: cidadesSelecionadas, status })
       .eq('id', estId)
     setSaving(false)
     if (error) { setToast({ msg: 'Erro ao salvar', type: 'error' }); return }
@@ -199,7 +204,7 @@ export default function ConfiguracoesPage() {
                 <div>
                   <label className="block text-xs font-bold text-on-surface-variant uppercase mb-1.5">Estado</label>
                   <div className="relative">
-                    <select value={estado} onChange={(e) => { setEstado(e.target.value); setCidade('') }}
+                    <select value={estado} onChange={(e) => { setEstado(e.target.value); setCidadesSelecionadas([]); setBuscaCidade('') }}
                       className="w-full px-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl text-sm outline-none focus:ring-2 focus:ring-secondary-container appearance-none">
                       <option value="">Selecione o estado</option>
                       {estados.map((e) => <option key={e.id} value={e.sigla}>{e.nome}</option>)}
@@ -208,18 +213,49 @@ export default function ConfiguracoesPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-on-surface-variant uppercase mb-1.5">Cidade</label>
-                  <div className="relative">
-                    <select value={cidade} onChange={(e) => setCidade(e.target.value)} disabled={!estado || loadingCidades}
-                      className={`w-full px-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl text-sm outline-none focus:ring-2 focus:ring-secondary-container appearance-none ${!estado ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                      <option value="">{!estado ? 'Selecione o estado primeiro' : loadingCidades ? 'Carregando...' : 'Selecione a cidade'}</option>
-                      {cidades.map((c) => <option key={c.id} value={c.nome}>{c.nome}</option>)}
-                    </select>
-                    {loadingCidades
-                      ? <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-outline-variant border-t-secondary-container rounded-full animate-spin" />
-                      : <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px] pointer-events-none">expand_more</span>
-                    }
-                  </div>
+                  <label className="block text-xs font-bold text-on-surface-variant uppercase mb-1.5">
+                    Cidades de atuação {cidadesSelecionadas.length > 0 && <span className="text-secondary-container normal-case font-normal">({cidadesSelecionadas.length} selecionada{cidadesSelecionadas.length > 1 ? 's' : ''})</span>}
+                  </label>
+                  {cidadesSelecionadas.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                      {cidadesSelecionadas.map(c => (
+                        <span key={c} className="flex items-center gap-1 px-2.5 py-1 bg-secondary-container/15 text-secondary-container text-xs font-semibold rounded-lg">
+                          {c}
+                          <button onClick={() => toggleCidade(c)} className="hover:text-error transition-colors">
+                            <span className="material-symbols-outlined text-[14px]">close</span>
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {!estado ? (
+                    <p className="text-xs text-on-surface-variant py-2">Selecione o estado primeiro.</p>
+                  ) : loadingCidades ? (
+                    <div className="flex items-center gap-2 py-2">
+                      <div className="w-4 h-4 border-2 border-outline-variant border-t-secondary-container rounded-full animate-spin" />
+                      <span className="text-xs text-on-surface-variant">Carregando cidades...</span>
+                    </div>
+                  ) : (
+                    <>
+                      <input value={buscaCidade} onChange={(e) => setBuscaCidade(e.target.value)}
+                        className="w-full px-4 py-2.5 bg-surface-container-low border border-outline-variant rounded-xl text-sm outline-none focus:ring-2 focus:ring-secondary-container mb-2"
+                        placeholder="Buscar cidade..." />
+                      <div className="max-h-44 overflow-y-auto rounded-xl border border-outline-variant divide-y divide-outline-variant/50">
+                        {listaCidades.filter(c => c.nome.toLowerCase().includes(buscaCidade.toLowerCase())).map(c => (
+                          <button key={c.id} onClick={() => toggleCidade(c.nome)}
+                            className={`w-full flex items-center justify-between px-4 py-2.5 text-sm text-left transition-colors ${
+                              cidadesSelecionadas.includes(c.nome)
+                                ? 'bg-secondary-container/10 text-secondary-container font-semibold'
+                                : 'text-on-background hover:bg-surface-container'
+                            }`}
+                          >
+                            {c.nome}
+                            {cidadesSelecionadas.includes(c.nome) && <span className="material-symbols-outlined text-[18px]">check</span>}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
