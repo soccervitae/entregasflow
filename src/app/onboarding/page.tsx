@@ -6,17 +6,26 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
+interface Estado { id: number; sigla: string; nome: string }
+interface Cidade { id: number; nome: string }
+
 export default function OnboardingPage() {
   const [step, setStep] = useState(1)
   const [nomeEst, setNomeEst] = useState('')
   const [telefone, setTelefone] = useState('')
   const [endereco, setEndereco] = useState('')
+  const [estado, setEstado] = useState('')
   const [cidade, setCidade] = useState('')
   const [tipo, setTipo] = useState<'pizzaria' | 'restaurante' | 'lanchonete' | 'outro'>('restaurante')
   const [loading, setLoading] = useState(false)
   const [erro, setErro] = useState('')
   const [userId, setUserId] = useState<string | null>(null)
   const [nomeUsuario, setNomeUsuario] = useState('')
+
+  const [estados, setEstados] = useState<Estado[]>([])
+  const [cidades, setCidades] = useState<Cidade[]>([])
+  const [loadingCidades, setLoadingCidades] = useState(false)
+
   const router = useRouter()
   const supabase = createClient()
 
@@ -29,11 +38,25 @@ export default function OnboardingPage() {
       if (profile) setNomeUsuario(profile.nome)
     }
     load()
+
+    fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome')
+      .then(r => r.json())
+      .then(setEstados)
   }, [])
+
+  useEffect(() => {
+    if (!estado) { setCidades([]); setCidade(''); return }
+    setLoadingCidades(true)
+    setCidade('')
+    fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${estado}/municipios?orderBy=nome`)
+      .then(r => r.json())
+      .then(data => { setCidades(data); setLoadingCidades(false) })
+  }, [estado])
 
   const handleSalvar = async () => {
     if (!nomeEst.trim()) { setErro('Informe o nome do estabelecimento.'); return }
-    if (!cidade.trim()) { setErro('Informe a cidade.'); return }
+    if (!estado) { setErro('Selecione o estado.'); return }
+    if (!cidade) { setErro('Selecione a cidade.'); return }
     if (!userId) return
 
     setLoading(true)
@@ -41,14 +64,7 @@ export default function OnboardingPage() {
 
     const { data: est, error } = await supabase
       .from('estabelecimentos')
-      .insert({
-        nome: nomeEst,
-        telefone,
-        endereco,
-        cidade,
-        owner_id: userId,
-        status: 'aberto',
-      })
+      .insert({ nome: nomeEst, telefone, endereco, estado, cidade, owner_id: userId, status: 'aberto' })
       .select('id')
       .single()
 
@@ -58,9 +74,7 @@ export default function OnboardingPage() {
       return
     }
 
-    // Define o novo estabelecimento como ativo no profile
     await supabase.from('profiles').update({ estabelecimento_id: est.id }).eq('id', userId)
-
     setLoading(false)
     router.push('/pdv')
   }
@@ -72,6 +86,8 @@ export default function OnboardingPage() {
     { value: 'outro', label: 'Outro', icon: 'storefront' },
   ] as const
 
+  const selectClass = "w-full px-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl text-sm outline-none focus:ring-2 focus:ring-secondary-container appearance-none"
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6">
       <div className="w-full max-w-[560px]">
@@ -82,7 +98,7 @@ export default function OnboardingPage() {
             <span className="material-symbols-outlined text-white text-3xl">store</span>
           </div>
           <h1 className="text-2xl font-bold text-on-background">
-            {nomeUsuario ? `Olá, ${nomeUsuario}! 👋` : 'Novo estabelecimento'}
+            {nomeUsuario ? `Olá, ${nomeUsuario}!` : 'Novo estabelecimento'}
           </h1>
           <p className="text-on-surface-variant text-sm mt-1">
             Cadastre um estabelecimento para começar a gerenciar pedidos.
@@ -114,13 +130,9 @@ export default function OnboardingPage() {
               <p className="text-on-surface-variant text-sm mb-6">Isso nos ajuda a personalizar a experiência.</p>
               <div className="grid grid-cols-2 gap-3">
                 {tiposEstabelecimento.map((t) => (
-                  <button
-                    key={t.value}
-                    onClick={() => setTipo(t.value)}
+                  <button key={t.value} onClick={() => setTipo(t.value)}
                     className={`flex flex-col items-center gap-3 p-5 rounded-xl border-2 transition-all ${
-                      tipo === t.value
-                        ? 'border-secondary-container bg-secondary-container/5'
-                        : 'border-outline-variant hover:border-outline'
+                      tipo === t.value ? 'border-secondary-container bg-secondary-container/5' : 'border-outline-variant hover:border-outline'
                     }`}
                   >
                     <span className={`material-symbols-outlined text-3xl ${tipo === t.value ? 'text-secondary-container' : 'text-on-surface-variant'}`}>
@@ -132,8 +144,7 @@ export default function OnboardingPage() {
                   </button>
                 ))}
               </div>
-              <button
-                onClick={() => setStep(2)}
+              <button onClick={() => setStep(2)}
                 className="w-full mt-6 bg-secondary-container text-white py-3.5 rounded-xl font-bold text-sm hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-2"
               >
                 Continuar
@@ -156,76 +167,77 @@ export default function OnboardingPage() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-on-surface-variant uppercase mb-1.5">
-                    Nome do estabelecimento *
-                  </label>
-                  <input
-                    type="text"
-                    value={nomeEst}
-                    onChange={(e) => setNomeEst(e.target.value)}
+                  <label className="block text-xs font-bold text-on-surface-variant uppercase mb-1.5">Nome do estabelecimento *</label>
+                  <input type="text" value={nomeEst} onChange={(e) => setNomeEst(e.target.value)}
                     className="w-full px-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl text-sm outline-none focus:ring-2 focus:ring-secondary-container"
-                    placeholder="Ex: Pizzaria do João"
-                  />
+                    placeholder="Ex: Pizzaria do João" />
                 </div>
+
                 <div>
                   <label className="block text-xs font-bold text-on-surface-variant uppercase mb-1.5">Telefone</label>
-                  <input
-                    type="tel"
-                    value={telefone}
-                    onChange={(e) => setTelefone(e.target.value)}
+                  <input type="tel" value={telefone} onChange={(e) => setTelefone(e.target.value)}
                     className="w-full px-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl text-sm outline-none focus:ring-2 focus:ring-secondary-container"
-                    placeholder="(11) 9 9999-9999"
-                  />
+                    placeholder="(11) 9 9999-9999" />
                 </div>
+
                 <div>
                   <label className="block text-xs font-bold text-on-surface-variant uppercase mb-1.5">Endereço</label>
-                  <input
-                    type="text"
-                    value={endereco}
-                    onChange={(e) => setEndereco(e.target.value)}
+                  <input type="text" value={endereco} onChange={(e) => setEndereco(e.target.value)}
                     className="w-full px-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl text-sm outline-none focus:ring-2 focus:ring-secondary-container"
-                    placeholder="Rua, número, bairro"
-                  />
+                    placeholder="Rua, número, bairro" />
                 </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-on-surface-variant uppercase mb-1.5">Estado *</label>
+                  <div className="relative">
+                    <select value={estado} onChange={(e) => setEstado(e.target.value)} className={selectClass}>
+                      <option value="">Selecione o estado</option>
+                      {estados.map((e) => (
+                        <option key={e.id} value={e.sigla}>{e.nome}</option>
+                      ))}
+                    </select>
+                    <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px] pointer-events-none">expand_more</span>
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-xs font-bold text-on-surface-variant uppercase mb-1.5">Cidade *</label>
-                  <input
-                    type="text"
-                    value={cidade}
-                    onChange={(e) => setCidade(e.target.value)}
-                    className="w-full px-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl text-sm outline-none focus:ring-2 focus:ring-secondary-container"
-                    placeholder="São Paulo"
-                  />
+                  <div className="relative">
+                    <select value={cidade} onChange={(e) => setCidade(e.target.value)} disabled={!estado || loadingCidades} className={selectClass + (!estado ? ' opacity-50 cursor-not-allowed' : '')}>
+                      <option value="">
+                        {!estado ? 'Selecione o estado primeiro' : loadingCidades ? 'Carregando cidades...' : 'Selecione a cidade'}
+                      </option>
+                      {cidades.map((c) => (
+                        <option key={c.id} value={c.nome}>{c.nome}</option>
+                      ))}
+                    </select>
+                    {loadingCidades
+                      ? <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-outline-variant border-t-secondary-container rounded-full animate-spin" />
+                      : <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px] pointer-events-none">expand_more</span>
+                    }
+                  </div>
                 </div>
               </div>
 
               <div className="flex gap-3 mt-6">
-                <button
-                  onClick={() => setStep(1)}
+                <button onClick={() => setStep(1)}
                   className="flex items-center gap-1 px-4 py-3 rounded-xl border border-outline-variant text-on-surface-variant text-sm font-semibold hover:border-outline transition-all"
                 >
                   <span className="material-symbols-outlined text-[16px]">arrow_back</span>
                   Voltar
                 </button>
-                <button
-                  onClick={handleSalvar}
-                  disabled={loading}
+                <button onClick={handleSalvar} disabled={loading}
                   className="flex-1 bg-secondary-container text-white py-3 rounded-xl font-bold text-sm hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  {loading ? (
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <span className="material-symbols-outlined text-[18px]">check_circle</span>
-                      Concluir cadastro
-                    </>
-                  )}
+                  {loading
+                    ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    : <><span className="material-symbols-outlined text-[18px]">check_circle</span> Concluir cadastro</>
+                  }
                 </button>
               </div>
             </div>
           )}
         </div>
-
       </div>
     </div>
   )

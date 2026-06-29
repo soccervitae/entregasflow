@@ -6,12 +6,19 @@ import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Toast from '@/components/ui/Toast'
 
+interface Estado { id: number; sigla: string; nome: string }
+interface Cidade { id: number; nome: string }
+
 export default function ConfiguracoesPage() {
   const [nome, setNome] = useState('')
   const [telefone, setTelefone] = useState('')
   const [endereco, setEndereco] = useState('')
   const [cidade, setCidade] = useState('')
   const [status, setStatus] = useState<'aberto' | 'fechado'>('aberto')
+  const [estado, setEstado] = useState('')
+  const [estados, setEstados] = useState<Estado[]>([])
+  const [cidades, setCidades] = useState<Cidade[]>([])
+  const [loadingCidades, setLoadingCidades] = useState(false)
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const [uploadingLogo, setUploadingLogo] = useState(false)
@@ -36,10 +43,23 @@ export default function ConfiguracoesPage() {
         setCidade(data.cidade || '')
         setStatus(data.status || 'aberto')
         setLogoUrl(data.logo_url || null)
+        setEstado(data.estado || '')
       }
     }
     load()
+
+    fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome')
+      .then(r => r.json())
+      .then(setEstados)
   }, [])
+
+  useEffect(() => {
+    if (!estado) { setCidades([]); return }
+    setLoadingCidades(true)
+    fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${estado}/municipios?orderBy=nome`)
+      .then(r => r.json())
+      .then(data => { setCidades(data); setLoadingCidades(false) })
+  }, [estado])
 
   const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -84,7 +104,7 @@ export default function ConfiguracoesPage() {
     setSaving(true)
     const { error } = await supabase
       .from('estabelecimentos')
-      .update({ nome, telefone, endereco, cidade, status })
+      .update({ nome, telefone, endereco, estado, cidade, status })
       .eq('id', estId)
     setSaving(false)
     if (error) { setToast({ msg: 'Erro ao salvar', type: 'error' }); return }
@@ -177,10 +197,29 @@ export default function ConfiguracoesPage() {
                     placeholder="Rua, número, bairro" />
                 </div>
                 <div>
+                  <label className="block text-xs font-bold text-on-surface-variant uppercase mb-1.5">Estado</label>
+                  <div className="relative">
+                    <select value={estado} onChange={(e) => { setEstado(e.target.value); setCidade('') }}
+                      className="w-full px-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl text-sm outline-none focus:ring-2 focus:ring-secondary-container appearance-none">
+                      <option value="">Selecione o estado</option>
+                      {estados.map((e) => <option key={e.id} value={e.sigla}>{e.nome}</option>)}
+                    </select>
+                    <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px] pointer-events-none">expand_more</span>
+                  </div>
+                </div>
+                <div>
                   <label className="block text-xs font-bold text-on-surface-variant uppercase mb-1.5">Cidade</label>
-                  <input value={cidade} onChange={(e) => setCidade(e.target.value)}
-                    className="w-full px-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl text-sm outline-none focus:ring-2 focus:ring-secondary-container"
-                    placeholder="São Paulo" />
+                  <div className="relative">
+                    <select value={cidade} onChange={(e) => setCidade(e.target.value)} disabled={!estado || loadingCidades}
+                      className={`w-full px-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl text-sm outline-none focus:ring-2 focus:ring-secondary-container appearance-none ${!estado ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                      <option value="">{!estado ? 'Selecione o estado primeiro' : loadingCidades ? 'Carregando...' : 'Selecione a cidade'}</option>
+                      {cidades.map((c) => <option key={c.id} value={c.nome}>{c.nome}</option>)}
+                    </select>
+                    {loadingCidades
+                      ? <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-outline-variant border-t-secondary-container rounded-full animate-spin" />
+                      : <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px] pointer-events-none">expand_more</span>
+                    }
+                  </div>
                 </div>
               </div>
             </div>
