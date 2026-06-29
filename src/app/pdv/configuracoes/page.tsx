@@ -5,7 +5,6 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Toast from '@/components/ui/Toast'
-import Image from 'next/image'
 
 export default function ConfiguracoesPage() {
   const [nome, setNome] = useState('')
