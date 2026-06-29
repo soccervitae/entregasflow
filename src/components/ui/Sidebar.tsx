@@ -10,6 +10,7 @@ const navItems = [
   { href: '/pdv/entregadores', label: 'Entregadores', icon: 'group' },
   { href: '/pdv/pedidos', label: 'Pedidos', icon: 'local_shipping' },
   { href: '/pdv/relatorios', label: 'Relatórios', icon: 'payments' },
+  { href: '/pdv/taxas', label: 'Taxas de Entrega', icon: 'local_atm' },
   { href: '/pdv/configuracoes', label: 'Configurações', icon: 'settings' },
 ]
 
