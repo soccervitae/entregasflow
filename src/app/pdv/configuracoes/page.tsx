@@ -8,6 +8,7 @@ import Toast from '@/components/ui/Toast'
 
 interface Estado { id: number; sigla: string; nome: string }
 interface Cidade { id: number; nome: string }
+interface TaxaEntrega { id: string; bairro: string; valor: number }
 
 export default function ConfiguracoesPage() {
   const [nome, setNome] = useState('')
@@ -27,6 +28,10 @@ export default function ConfiguracoesPage() {
   const [saving, setSaving] = useState(false)
   const [estId, setEstId] = useState<string | null>(null)
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
+  const [taxas, setTaxas] = useState<TaxaEntrega[]>([])
+  const [novoBairro, setNovoBairro] = useState('')
+  const [novoValor, setNovoValor] = useState('')
+  const [savingTaxa, setSavingTaxa] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
 
@@ -45,6 +50,12 @@ export default function ConfiguracoesPage() {
         setStatus(data.status || 'aberto')
         setLogoUrl(data.logo_url || null)
         setEstado(data.estado || '')
+        const { data: taxasData } = await supabase
+          .from('taxas_entrega')
+          .select('id, bairro, valor')
+          .eq('estabelecimento_id', data.id)
+          .order('bairro')
+        if (taxasData) setTaxas(taxasData)
       }
     }
     load()
@@ -114,6 +125,27 @@ export default function ConfiguracoesPage() {
     setSaving(false)
     if (error) { setToast({ msg: 'Erro ao salvar', type: 'error' }); return }
     setToast({ msg: 'Configurações salvas!', type: 'success' })
+  }
+
+  const adicionarTaxa = async () => {
+    if (!novoBairro.trim() || !novoValor || !estId) return
+    setSavingTaxa(true)
+    const valor = parseFloat(novoValor.replace(',', '.'))
+    const { data, error } = await supabase
+      .from('taxas_entrega')
+      .insert({ estabelecimento_id: estId, bairro: novoBairro.trim(), valor })
+      .select('id, bairro, valor')
+      .single()
+    setSavingTaxa(false)
+    if (error) { setToast({ msg: 'Erro ao salvar taxa', type: 'error' }); return }
+    setTaxas(prev => [...prev, data].sort((a, b) => a.bairro.localeCompare(b.bairro)))
+    setNovoBairro('')
+    setNovoValor('')
+  }
+
+  const removerTaxa = async (id: string) => {
+    await supabase.from('taxas_entrega').delete().eq('id', id)
+    setTaxas(prev => prev.filter(t => t.id !== id))
   }
 
   const logoSrc = logoPreview || logoUrl
@@ -257,6 +289,57 @@ export default function ConfiguracoesPage() {
                     </>
                   )}
                 </div>
+              </div>
+            </div>
+
+            {/* Taxas de Entrega */}
+            <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/20 shadow-sm p-6">
+              <h3 className="font-semibold text-on-background mb-1">Taxas de Entrega por Bairro</h3>
+              <p className="text-xs text-on-surface-variant mb-4">Defina o valor da taxa para cada bairro que você atende.</p>
+
+              {taxas.length > 0 && (
+                <div className="rounded-xl border border-outline-variant divide-y divide-outline-variant/50 mb-4">
+                  {taxas.map(t => (
+                    <div key={t.id} className="flex items-center justify-between px-4 py-3">
+                      <span className="text-sm text-on-background font-medium">{t.bairro}</span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-bold text-secondary-container">
+                          R$ {t.valor.toFixed(2).replace('.', ',')}
+                        </span>
+                        <button onClick={() => removerTaxa(t.id)} className="text-error/50 hover:text-error transition-colors">
+                          <span className="material-symbols-outlined text-[18px]">delete</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <input
+                  value={novoBairro}
+                  onChange={(e) => setNovoBairro(e.target.value)}
+                  className="flex-1 px-4 py-2.5 bg-surface-container-low border border-outline-variant rounded-xl text-sm outline-none focus:ring-2 focus:ring-secondary-container"
+                  placeholder="Nome do bairro"
+                />
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-on-surface-variant">R$</span>
+                  <input
+                    type="text" inputMode="decimal"
+                    value={novoValor}
+                    onChange={(e) => setNovoValor(e.target.value)}
+                    className="w-24 pl-8 pr-3 py-2.5 bg-surface-container-low border border-outline-variant rounded-xl text-sm outline-none focus:ring-2 focus:ring-secondary-container"
+                    placeholder="0,00"
+                  />
+                </div>
+                <button
+                  onClick={adicionarTaxa}
+                  disabled={savingTaxa || !novoBairro.trim() || !novoValor}
+                  className="flex items-center gap-1 px-4 py-2.5 bg-secondary-container text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-50"
+                >
+                  <span className="material-symbols-outlined text-[18px]">add</span>
+                  Adicionar
+                </button>
               </div>
             </div>
 

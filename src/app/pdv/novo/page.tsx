@@ -16,6 +16,7 @@ const formasPagamento = [
 
 interface Item { nome: string; quantidade: number; valor_unitario: number }
 interface Entregador { id: string; nome: string }
+interface TaxaEntrega { bairro: string; valor: number }
 
 export default function NovoPedidoPage() {
   const router = useRouter()
@@ -25,6 +26,8 @@ export default function NovoPedidoPage() {
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
   const [estabelecimentoId, setEstabelecimentoId] = useState<string | null>(null)
   const [entregadores, setEntregadores] = useState<Entregador[]>([])
+  const [taxas, setTaxas] = useState<TaxaEntrega[]>([])
+  const [taxaEntrega, setTaxaEntrega] = useState<number | null>(null)
 
   // Campo IA
   const [textoIA, setTextoIA] = useState('')
@@ -49,6 +52,9 @@ export default function NovoPedidoPage() {
         supabase.from('entregadores').select('id, nome').eq('estabelecimento_id', data.id).eq('ativo', true).then(({ data: ents }) => {
           if (ents) setEntregadores(ents)
         })
+        supabase.from('taxas_entrega').select('bairro, valor').eq('estabelecimento_id', data.id).then(({ data: tx }) => {
+          if (tx) setTaxas(tx)
+        })
       })
     })
   }, [])
@@ -66,7 +72,7 @@ export default function NovoPedidoPage() {
       const data = await res.json()
       if (data.cliente_nome) setClienteNome(data.cliente_nome)
       if (data.endereco) setEndereco(data.endereco)
-      if (data.bairro) setBairro(data.bairro)
+      if (data.bairro) handleBairroChange(data.bairro)
       if (data.valor) setValor(String(data.valor).replace('.', ','))
       if (data.forma_pagamento) setFormaPagamento(data.forma_pagamento)
       if (data.numero_externo) setNumeroExterno(data.numero_externo)
@@ -77,6 +83,12 @@ export default function NovoPedidoPage() {
       setToast({ msg: 'Não foi possível interpretar. Preencha manualmente.', type: 'error' })
     }
     setParsing(false)
+  }
+
+  const handleBairroChange = (value: string) => {
+    setBairro(value)
+    const taxa = taxas.find(t => t.bairro.toLowerCase() === value.toLowerCase())
+    setTaxaEntrega(taxa ? taxa.valor : null)
   }
 
   const addItem = () => setItens([...itens, { nome: '', quantidade: 1, valor_unitario: 0 }])
@@ -103,6 +115,7 @@ export default function NovoPedidoPage() {
       total,
       itens: itens.length ? itens : [],
       forma_pagamento: formaPagamento,
+      taxa_entrega: taxaEntrega ?? null,
       entregador_id: entregadorId || null,
       numero_externo: numeroExterno.trim() || null,
       observacao: obs.trim() || null,
@@ -186,9 +199,23 @@ export default function NovoPedidoPage() {
           </div>
           <div>
             <label className="block text-xs font-bold text-on-surface-variant uppercase mb-1.5">Bairro</label>
-            <input value={bairro} onChange={(e) => setBairro(e.target.value)}
+            <input value={bairro} onChange={(e) => handleBairroChange(e.target.value)}
               className="w-full px-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl text-sm focus:ring-2 focus:ring-secondary-container outline-none"
-              placeholder="Nome do bairro" />
+              placeholder="Nome do bairro"
+              list="lista-bairros"
+            />
+            <datalist id="lista-bairros">
+              {taxas.map(t => <option key={t.bairro} value={t.bairro} />)}
+            </datalist>
+            {taxaEntrega !== null && (
+              <div className="mt-2 flex items-center gap-2 text-sm text-secondary-container font-semibold">
+                <span className="material-symbols-outlined text-[16px]">local_shipping</span>
+                Taxa de entrega: R$ {taxaEntrega.toFixed(2).replace('.', ',')}
+              </div>
+            )}
+            {bairro && taxaEntrega === null && taxas.length > 0 && (
+              <p className="mt-1.5 text-xs text-on-surface-variant">Bairro sem taxa cadastrada.</p>
+            )}
           </div>
         </div>
 
