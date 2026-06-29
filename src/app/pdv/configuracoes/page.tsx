@@ -30,8 +30,11 @@ export default function ConfiguracoesPage() {
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
   const [taxas, setTaxas] = useState<TaxaEntrega[]>([])
   const [cidadeTaxa, setCidadeTaxa] = useState('')
-  const [novoBairro, setNovoBairro] = useState('')
+  const [bairrosDisponiveis, setBairrosDisponiveis] = useState<string[]>([])
+  const [loadingBairros, setLoadingBairros] = useState(false)
+  const [buscaBairro, setBuscaBairro] = useState('')
   const [novoValor, setNovoValor] = useState('')
+  const [bairroSelecionado, setBairroSelecionado] = useState('')
   const [savingTaxa, setSavingTaxa] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
@@ -129,19 +132,35 @@ export default function ConfiguracoesPage() {
     setToast({ msg: 'Configurações salvas!', type: 'success' })
   }
 
+  const carregarBairros = async (cidade: string) => {
+    setLoadingBairros(true)
+    setBairrosDisponiveis([])
+    setBuscaBairro('')
+    setBairroSelecionado('')
+    setNovoValor('')
+    try {
+      const res = await fetch(`/api/bairros?cidade=${encodeURIComponent(cidade)}&estado=${encodeURIComponent(estado)}`)
+      const data = await res.json()
+      setBairrosDisponiveis(data.bairros || [])
+    } catch {
+      setBairrosDisponiveis([])
+    }
+    setLoadingBairros(false)
+  }
+
   const adicionarTaxa = async () => {
-    if (!cidadeTaxa || !novoBairro.trim() || !novoValor || !estId) return
+    if (!cidadeTaxa || !bairroSelecionado || !novoValor || !estId) return
     setSavingTaxa(true)
     const valor = parseFloat(novoValor.replace(',', '.'))
     const { data, error } = await supabase
       .from('taxas_entrega')
-      .insert({ estabelecimento_id: estId, cidade: cidadeTaxa, bairro: novoBairro.trim(), valor })
+      .insert({ estabelecimento_id: estId, cidade: cidadeTaxa, bairro: bairroSelecionado, valor })
       .select('id, cidade, bairro, valor')
       .single()
     setSavingTaxa(false)
     if (error) { setToast({ msg: 'Erro ao salvar taxa', type: 'error' }); return }
     setTaxas(prev => [...prev, data].sort((a, b) => a.cidade.localeCompare(b.cidade) || a.bairro.localeCompare(b.bairro)))
-    setNovoBairro('')
+    setBairroSelecionado('')
     setNovoValor('')
   }
 
@@ -297,25 +316,32 @@ export default function ConfiguracoesPage() {
             {/* Taxas de Entrega */}
             <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/20 shadow-sm p-6">
               <h3 className="font-semibold text-on-background mb-1">Taxas de Entrega por Bairro</h3>
-              <p className="text-xs text-on-surface-variant mb-4">Selecione a cidade e cadastre a taxa de cada bairro.</p>
+              <p className="text-xs text-on-surface-variant mb-4">Selecione a cidade para ver os bairros e cadastrar as taxas.</p>
 
-              {/* Seletor de cidade */}
-              <div className="relative mb-4">
-                <select
-                  value={cidadeTaxa}
-                  onChange={(e) => { setCidadeTaxa(e.target.value); setNovoBairro(''); setNovoValor('') }}
-                  className="w-full px-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl text-sm outline-none focus:ring-2 focus:ring-secondary-container appearance-none"
-                >
-                  <option value="">Selecione a cidade</option>
-                  {cidadesSelecionadas.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-                <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px] pointer-events-none">expand_more</span>
-              </div>
-
-              {cidadeTaxa && (
+              {cidadesSelecionadas.length === 0 ? (
+                <p className="text-xs text-on-surface-variant">Cadastre as cidades de atuação primeiro em Informações Básicas.</p>
+              ) : (
                 <>
-                  {/* Lista de bairros da cidade selecionada */}
-                  {taxas.filter(t => t.cidade === cidadeTaxa).length > 0 ? (
+                  {/* Seletor de cidade */}
+                  <div className="relative mb-4">
+                    <select
+                      value={cidadeTaxa}
+                      onChange={(e) => {
+                        const c = e.target.value
+                        setCidadeTaxa(c)
+                        if (c) carregarBairros(c)
+                        else { setBairrosDisponiveis([]); setBairroSelecionado(''); setNovoValor('') }
+                      }}
+                      className="w-full px-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl text-sm outline-none focus:ring-2 focus:ring-secondary-container appearance-none"
+                    >
+                      <option value="">Selecione a cidade</option>
+                      {cidadesSelecionadas.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                    <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px] pointer-events-none">expand_more</span>
+                  </div>
+
+                  {/* Taxas já cadastradas para a cidade */}
+                  {cidadeTaxa && taxas.filter(t => t.cidade === cidadeTaxa).length > 0 && (
                     <div className="rounded-xl border border-outline-variant divide-y divide-outline-variant/50 mb-4">
                       {taxas.filter(t => t.cidade === cidadeTaxa).map(t => (
                         <div key={t.id} className="flex items-center justify-between px-4 py-3">
@@ -331,47 +357,83 @@ export default function ConfiguracoesPage() {
                         </div>
                       ))}
                     </div>
-                  ) : (
-                    <p className="text-xs text-on-surface-variant mb-4">Nenhuma taxa cadastrada para {cidadeTaxa}.</p>
                   )}
 
-                  {/* Adicionar novo bairro */}
-                  <div className="flex gap-2">
-                    <input
-                      value={novoBairro}
-                      onChange={(e) => setNovoBairro(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && adicionarTaxa()}
-                      className="flex-1 px-4 py-2.5 bg-surface-container-low border border-outline-variant rounded-xl text-sm outline-none focus:ring-2 focus:ring-secondary-container"
-                      placeholder="Nome do bairro"
-                    />
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-on-surface-variant">R$</span>
-                      <input
-                        type="text" inputMode="decimal"
-                        value={novoValor}
-                        onChange={(e) => setNovoValor(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && adicionarTaxa()}
-                        className="w-24 pl-8 pr-3 py-2.5 bg-surface-container-low border border-outline-variant rounded-xl text-sm outline-none focus:ring-2 focus:ring-secondary-container"
-                        placeholder="0,00"
-                      />
-                    </div>
-                    <button
-                      onClick={adicionarTaxa}
-                      disabled={savingTaxa || !novoBairro.trim() || !novoValor}
-                      className="flex items-center gap-1 px-4 py-2.5 bg-secondary-container text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-50"
-                    >
-                      {savingTaxa
-                        ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        : <span className="material-symbols-outlined text-[18px]">add</span>
-                      }
-                      Adicionar
-                    </button>
-                  </div>
-                </>
-              )}
+                  {/* Lista de bairros para adicionar */}
+                  {cidadeTaxa && (
+                    <div className="border border-outline-variant rounded-xl p-4 space-y-3">
+                      <p className="text-xs font-bold text-on-surface-variant uppercase">Adicionar bairro</p>
 
-              {cidadesSelecionadas.length === 0 && (
-                <p className="text-xs text-on-surface-variant">Cadastre as cidades de atuação primeiro em Informações Básicas.</p>
+                      {loadingBairros ? (
+                        <div className="flex items-center gap-2 py-2">
+                          <div className="w-4 h-4 border-2 border-outline-variant border-t-secondary-container rounded-full animate-spin" />
+                          <span className="text-xs text-on-surface-variant">Buscando bairros de {cidadeTaxa}...</span>
+                        </div>
+                      ) : bairrosDisponiveis.length > 0 ? (
+                        <>
+                          <input
+                            value={buscaBairro}
+                            onChange={(e) => setBuscaBairro(e.target.value)}
+                            className="w-full px-3 py-2 bg-surface-container-low border border-outline-variant rounded-xl text-sm outline-none focus:ring-2 focus:ring-secondary-container"
+                            placeholder="Buscar bairro..."
+                          />
+                          <div className="max-h-44 overflow-y-auto rounded-xl border border-outline-variant divide-y divide-outline-variant/50">
+                            {bairrosDisponiveis
+                              .filter(b =>
+                                b.toLowerCase().includes(buscaBairro.toLowerCase()) &&
+                                !taxas.some(t => t.cidade === cidadeTaxa && t.bairro === b)
+                              )
+                              .map(b => (
+                                <button
+                                  key={b}
+                                  onClick={() => setBairroSelecionado(prev => prev === b ? '' : b)}
+                                  className={`w-full flex items-center justify-between px-4 py-2.5 text-sm text-left transition-colors ${
+                                    bairroSelecionado === b
+                                      ? 'bg-secondary-container/10 text-secondary-container font-semibold'
+                                      : 'text-on-background hover:bg-surface-container'
+                                  }`}
+                                >
+                                  {b}
+                                  {bairroSelecionado === b && <span className="material-symbols-outlined text-[18px]">check</span>}
+                                </button>
+                              ))}
+                          </div>
+                        </>
+                      ) : (
+                        <p className="text-xs text-on-surface-variant">Nenhum bairro encontrado. Verifique a cidade selecionada.</p>
+                      )}
+
+                      {bairroSelecionado && (
+                        <div className="flex items-center gap-2 pt-1">
+                          <span className="text-sm text-on-background flex-1 font-medium">{bairroSelecionado}</span>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-on-surface-variant">R$</span>
+                            <input
+                              type="text" inputMode="decimal"
+                              value={novoValor}
+                              onChange={(e) => setNovoValor(e.target.value)}
+                              onKeyDown={(e) => e.key === 'Enter' && adicionarTaxa()}
+                              className="w-28 pl-8 pr-3 py-2 bg-surface-container-low border border-outline-variant rounded-xl text-sm outline-none focus:ring-2 focus:ring-secondary-container"
+                              placeholder="0,00"
+                              autoFocus
+                            />
+                          </div>
+                          <button
+                            onClick={adicionarTaxa}
+                            disabled={savingTaxa || !novoValor}
+                            className="flex items-center gap-1 px-4 py-2 bg-secondary-container text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-50"
+                          >
+                            {savingTaxa
+                              ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              : <span className="material-symbols-outlined text-[18px]">add</span>
+                            }
+                            Salvar
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
