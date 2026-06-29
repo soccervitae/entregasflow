@@ -16,7 +16,7 @@ const formasPagamento = [
 
 interface Item { nome: string; quantidade: number; valor_unitario: number }
 interface Entregador { id: string; nome: string }
-interface TaxaEntrega { bairro: string; valor: number }
+interface TaxaEntrega { cidade: string; bairro: string; valor: number }
 
 export default function NovoPedidoPage() {
   const router = useRouter()
@@ -52,7 +52,7 @@ export default function NovoPedidoPage() {
         supabase.from('entregadores').select('id, nome').eq('estabelecimento_id', data.id).eq('ativo', true).then(({ data: ents }) => {
           if (ents) setEntregadores(ents)
         })
-        supabase.from('taxas_entrega').select('bairro, valor').eq('estabelecimento_id', data.id).then(({ data: tx }) => {
+        supabase.from('taxas_entrega').select('cidade, bairro, valor').eq('estabelecimento_id', data.id).then(({ data: tx }) => {
           if (tx) setTaxas(tx)
         })
       })
@@ -85,9 +85,13 @@ export default function NovoPedidoPage() {
     setParsing(false)
   }
 
-  const handleBairroChange = (value: string) => {
-    setBairro(value)
-    const taxa = taxas.find(t => t.bairro.toLowerCase() === value.toLowerCase())
+  const handleBairroChange = (bairroVal: string, cidadeVal?: string) => {
+    setBairro(bairroVal)
+    const cidade = cidadeVal !== undefined ? cidadeVal : bairro
+    const taxa = taxas.find(t =>
+      t.bairro.toLowerCase() === bairroVal.toLowerCase() &&
+      (!t.cidade || !cidade || t.cidade.toLowerCase() === cidade.toLowerCase())
+    )
     setTaxaEntrega(taxa ? taxa.valor : null)
   }
 
